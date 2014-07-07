@@ -1,4 +1,5 @@
 googledrive_doc2pdf
 ===================
+Convert a file to PDF with Google Drive AP
 
-Class permettant de convertir un .doc en .pdf avec l'api PHP de Google Drive
+Url : labs.bilboeee.fr/googledrive_doc2pdf/example
