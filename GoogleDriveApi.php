@@ -2,15 +2,11 @@
 
 
 class GoogleDriveApi {
-	//Initializing the variables for the API
-	//Login with the service account
-	//Check https://developers.google.com/drive/service-accounts
+	//Initializing the variables for the API	
 	private $_clientID 				= '';
 	private $_serviceAccountName 	= '';
 	private $_keyFile 				= '';
-	private $_scope 				= '';
-	private $_localPath 			= '';
-	private $_localAdminPath 		= '';
+	private $_scope 				= 'https://www.googleapis.com/auth/drive';
 
 	private $_currentFile 			= NULL;
 	private $_googleService 		= NULL;
@@ -23,12 +19,16 @@ class GoogleDriveApi {
     * @param void
     * @return void
     */
-	private function __construct() {
-
+	private function __construct( $clientID, $serviceAccountName, $keyFile ) {
+		//Set the variable
+		$this->_clientID = $clientID;
+		$this->_serviceAccountName = $serviceAccountName;
+		$this->_keyFile = $keyFile;
+	
 		//Including files for the api
-		require_once "./google-api-php-client/src/Google_Client.php";
-		require_once "./google-api-php-client/src/contrib/Google_DriveService.php";
-		require_once "./google-api-php-client/src/contrib/Google_Oauth2Service.php";
+		require_once "Google/Client.php";
+		require_once "Google/Service/Drive.php";
+		require_once "Google/Service/Oauth2.php";
 
 	    //Initializing the service
 		$this->_googleService = $this->_buildService();
@@ -43,11 +43,10 @@ class GoogleDriveApi {
     * @param void
     * @return Singleton
     */
-	public static function getInstance() {
+	public static function getInstance( $clientID, $serviceAccountName, $keyFile ) {
 		if( is_null(self::$_instance) ){
-			self::$_instance = new GoogleDriveApi();
+			self::$_instance = new GoogleDriveApi( $clientID, $serviceAccountName, $keyFile );
 		}
-
 		return self::$_instance;
 	}
 
@@ -67,7 +66,7 @@ class GoogleDriveApi {
 		$key = file_get_contents( $this->_keyFile );
 
 		//Prepare the credentials
-		$auth = new Google_AssertionCredentials(
+		$auth = new Google_Auth_AssertionCredentials(
 			$this->_serviceAccountName,
 			array( $this->_scope ),
 			$key
@@ -78,7 +77,6 @@ class GoogleDriveApi {
 
 		//Init the client
 		$client->setScopes( array( $this->_scope ) );
-		$client->setUseObjects( true );
 
 		//Set the credentials
 		$client->setAssertionCredentials( $auth );
@@ -89,7 +87,7 @@ class GoogleDriveApi {
 		$client->setClientId( $this->_clientID );
 
 		//Return the service
-		return new Google_DriveService( $client );
+		return new Google_Service_Drive( $client );
 	}
 
 
@@ -104,10 +102,10 @@ class GoogleDriveApi {
 	 */
 	private function _createFile( $fileuploaded ){
 		//Create the file
-		$file = new Google_DriveFile();
+		$file = new Google_Service_Drive_DriveFile();
 
 		//Set the file name
-		$file->setTitle( jardiland_recrutement_urlEncode( $fileuploaded['name'] ) );
+		$file->setTitle( trim( basename( stripslashes($fileuploaded['name']), ".\x00..\x20") ) );
 
 		//Set the Mime-type
 		$file->setMimeType( $fileuploaded['type'] );
@@ -117,6 +115,7 @@ class GoogleDriveApi {
 			'data' => file_get_contents($fileuploaded["tmp_name"]),
 			'mimeType' => $fileuploaded['type'],
 			'convert' => true,
+			'uploadType' => 'multipart'
 		));
 
 		//Set the public permission
@@ -135,7 +134,7 @@ class GoogleDriveApi {
 	 *
 	 */
 	 private function _setPublicPermission(){
-		$permission = new Google_Permission();
+		$permission = new Google_Service_Drive_Permission();
 		$permission->setRole( 'writer' );
 		$permission->setType( 'anyone' );
 		$permission->setValue( 'me' );
